@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Should I Go Outside?</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #f7f7f5;
+      color: #1a1a1a;
+      transition: background 0.5s ease;
+    }
+
+    body.yes { background: #eef6ee; }
+    body.no  { background: #fdecea; }
+
+    #app {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #aaa;
+      margin-bottom: 2.5rem;
+    }
+
+    /* ── Verdict ── */
+    .verdict {
+      font-size: clamp(7rem, 32vw, 12rem);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    .verdict.yes { color: #2a7a2e; }
+    .verdict.no  { color: #c0392b; }
+
+    .reason {
+      margin-top: 1.25rem;
+      font-size: 1.1rem;
+      color: #555;
+      line-height: 1.55;
+      animation: fade-up 0.4s 0.1s ease both;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.65); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    @keyframes fade-up {
+      from { transform: translateY(8px); opacity: 0; }
+      to   { transform: translateY(0);   opacity: 1; }
+    }
+
+    /* ── Loading ── */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #999;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      font-size: 0.95rem;
+      color: #999;
+    }
+
+    /* ── Error ── */
+    .error-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #444;
+      margin-bottom: 0.6rem;
+    }
+
+    .error-body {
+      font-size: 0.95rem;
+      color: #777;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 2.5rem;
+      font-size: 0.75rem;
+      color: #ccc;
+    }
+
+    .footer a, .footer button {
+      color: #bbb;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      padding: 0;
+    }
+
+    .footer a:hover, .footer button:hover { color: #888; }
+
+    /* ── Retry button ── */
+    .btn {
+      display: inline-block;
+      padding: 0.55rem 1.4rem;
+      border: 1.5px solid #ccc;
+      border-radius: 6px;
+      background: transparent;
+      font-size: 0.9rem;
+      color: #666;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn:hover { border-color: #888; color: #333; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const app = document.getElementById('app');
+
+    // ── Render helpers ────────────────────────────────────────────────────────
+
+    function renderLoading() {
+      document.body.className = '';
+      app.innerHTML = `
+        <div class="label">Should I Go Outside?</div>
+        <div class="loading">
+          <div class="spinner"></div>
+          <p class="loading-text">Checking conditions…</p>
+        </div>
+      `;
+    }
+
+    function renderError(msg) {
+      document.body.className = '';
+      app.innerHTML = `
+        <div class="label">Should I Go Outside?</div>
+        <p class="error-title">Couldn't check</p>
+        <p class="error-body">${msg}</p>
+        <button class="btn" onclick="init()">Try again</button>
+      `;
+    }
+
+    function renderResult(yes, reason) {
+      document.body.className = yes ? 'yes' : 'no';
+      app.innerHTML = `
+        <div class="label">Should I Go Outside?</div>
+        <div class="verdict ${yes ? 'yes' : 'no'}">${yes ? 'YES' : 'NO'}</div>
+        <p class="reason">${reason}</p>
+        <div class="footer"><button onclick="init()">Refresh</button></div>
+      `;
+    }
+
+    // ── Verdict logic ─────────────────────────────────────────────────────────
+    // Returns [yes: bool, reason: string]
+    // Priority: air quality → rain → temperature → UV → wind → all clear
+
+    function getVerdict(weather, aqi) {
+      const temp  = weather.temperature_2m        ?? 20;
+      const rain  = weather.precipitation_probability ?? 0;
+      const wind  = weather.wind_speed_10m        ?? 0;  // km/h (default unit)
+      const uv    = weather.uv_index              ?? 0;
+      const aq    = aqi?.us_aqi                   ?? 0;
+
+      // 1 · Air quality (US AQI)
+      if (aq > 200) return [false, "AQI is hazardous right now. Seriously, stay in."];
+      if (aq > 150) return [false, "AQI is rough today, stay in."];
+      if (aq > 100) return [false, "Air quality's not great — better enjoyed indoors."];
+
+      // 2 · Precipitation probability (%)
+      if (rain > 80) return [false, "Heavy rain incoming. Hard no."];
+      if (rain > 60) return [false, "It's probably going to pour. Skip it."];
+      if (rain > 40) return [false, "Light rain expected this afternoon."];
+
+      // 3 · Temperature (°C)
+      if (temp > 42) return [false, `${Math.round(temp)}°C outside. Absolutely not.`];
+      if (temp > 38) return [false, `${Math.round(temp)}°C and sunny — unless you enjoy melting.`];
+      if (temp < 0)  return [false, `It's ${Math.round(temp)}°C. Stay warm, stay home.`];
+      if (temp < 5)  return [false, `It's ${Math.round(temp)}°C out. Save yourself.`];
+
+      // 4 · UV index
+      if (uv > 10) return [false, "UV is extreme today. Sunscreen won't cut it."];
+      if (uv > 8)  return [false, "UV index is very high — keep it brief if you go out."];
+
+      // 5 · Wind speed (km/h)
+      if (wind > 70) return [false, "Gale-force winds. Things are genuinely flying."];
+      if (wind > 50) return [false, "Very gusty today — not a great time."];
+
+      // All clear
+      if (temp > 28) return [true, "Warm and clear — nice time to get out there."];
+      if (temp > 18) return [true, "Actually a nice day, get out there."];
+      if (temp > 10) return [true, "Decent conditions. Go for it."];
+      return            [true, "A bit cool but perfectly fine to head out."];
+    }
+
+    // ── Data fetching ─────────────────────────────────────────────────────────
+
+    async function fetchData(lat, lon) {
+      const weatherUrl = new URL("https://api.open-meteo.com/v1/forecast");
+      weatherUrl.searchParams.set("latitude", lat);
+      weatherUrl.searchParams.set("longitude", lon);
+      weatherUrl.searchParams.set("current",
+        "temperature_2m,precipitation_probability,wind_speed_10m,uv_index,weather_code");
+
+      const aqUrl = new URL("https://air-quality-api.open-meteo.com/v1/air-quality");
+      aqUrl.searchParams.set("latitude", lat);
+      aqUrl.searchParams.set("longitude", lon);
+      aqUrl.searchParams.set("current", "us_aqi,pm2_5");
+
+      const [wRes, aRes] = await Promise.all([fetch(weatherUrl), fetch(aqUrl)]);
+
+      if (!wRes.ok) throw new Error("Weather data unavailable. Try again shortly.");
+      if (!aRes.ok) throw new Error("Air quality data unavailable. Try again shortly.");
+
+      const [wData, aData] = await Promise.all([wRes.json(), aRes.json()]);
+      return { weather: wData.current, aqi: aData.current };
+    }
+
+    function getLocation() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Your browser doesn't support geolocation."));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          err => {
+            if (err.code === 1)
+              reject(new Error("Location access denied. Enable it in your browser and try again."));
+            else
+              reject(new Error("Couldn't get your location. Try again."));
+          },
+          { timeout: 10000 }
+        );
+      });
+    }
+
+    // ── Entry point ───────────────────────────────────────────────────────────
+
+    async function init() {
+      renderLoading();
+      try {
+        const { lat, lon }      = await getLocation();
+        const { weather, aqi }  = await fetchData(lat, lon);
+        const [yes, reason]     = getVerdict(weather, aqi);
+        renderResult(yes, reason);
+      } catch (err) {
+        renderError(err.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
