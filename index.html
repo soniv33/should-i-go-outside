@@ -410,12 +410,13 @@
 
     // ── Share ──────────────────────────────────────────────────────────────────
     async function share(yes, reason) {
+      const url = 'https://soniv33.github.io/should-i-go-outside/';
       const text = `${yes ? 'YES' : 'NO'} — ${reason}`;
       try {
         if (navigator.share) {
-          await navigator.share({ title: 'Should I Go Outside?', text });
+          await navigator.share({ title: 'Should I Go Outside?', text, url });
         } else {
-          await navigator.clipboard.writeText(text);
+          await navigator.clipboard.writeText(`${text}\n${url}`);
           const btn = document.getElementById('share-btn');
           if (btn) {
             const orig = btn.textContent;
