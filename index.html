@@ -4,11 +4,46 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Should I Go Outside?</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#f7f7f5" id="tc" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+
+  <!-- Social / OG -->
+  <meta property="og:title" content="Should I Go Outside?" />
+  <meta property="og:description" content="One verdict. No dashboard. Just yes or no." />
+  <meta property="og:image" content="icon.svg" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="description" content="One verdict. No dashboard. Just yes or no." />
+
   <style>
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #f7f7f5;
+      --fg:       #1a1a1a;
+      --muted:    #888;
+      --subtle:   #d0d0cc;
+      --yes-bg:   #eef6ee;
+      --yes-fg:   #2a7a2e;
+      --no-bg:    #fdecea;
+      --no-fg:    #c0392b;
+      --card-bg:  transparent;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:      #121210;
+        --fg:      #e8e8e5;
+        --muted:   #666;
+        --subtle:  #333;
+        --yes-bg:  #0b1e0c;
+        --yes-fg:  #5abf60;
+        --no-bg:   #1e0c0b;
+        --no-fg:   #e05a4e;
+      }
     }
 
     body {
@@ -18,27 +53,37 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #f7f7f5;
-      color: #1a1a1a;
-      transition: background 0.5s ease;
+      background: var(--bg);
+      color: var(--fg);
     }
 
-    body.yes { background: #eef6ee; }
-    body.no  { background: #fdecea; }
+    @media (prefers-reduced-motion: no-preference) {
+      body { transition: background 0.5s ease; }
+    }
+
+    body.yes { background: var(--yes-bg); }
+    body.no  { background: var(--no-bg); }
 
     #app {
       text-align: center;
       padding: 2rem 1.5rem;
       width: 100%;
-      max-width: 520px;
+      max-width: 560px;
     }
 
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); border: 0;
+    }
+
+    /* ── Label ── */
     .label {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 600;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: #aaa;
+      color: var(--muted);
       margin-bottom: 2.5rem;
     }
 
@@ -48,18 +93,14 @@
       font-weight: 900;
       line-height: 1;
       letter-spacing: -0.03em;
-      animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     }
 
-    .verdict.yes { color: #2a7a2e; }
-    .verdict.no  { color: #c0392b; }
+    .verdict.yes { color: var(--yes-fg); }
+    .verdict.no  { color: var(--no-fg); }
 
-    .reason {
-      margin-top: 1.25rem;
-      font-size: 1.1rem;
-      color: #555;
-      line-height: 1.55;
-      animation: fade-up 0.4s 0.1s ease both;
+    @media (prefers-reduced-motion: no-preference) {
+      .verdict.animate { animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+      .below.animate   { animation: fade-up 0.35s 0.1s ease both; }
     }
 
     @keyframes pop {
@@ -72,6 +113,63 @@
       to   { transform: translateY(0);   opacity: 1; }
     }
 
+    /* ── Below verdict ── */
+    .below { margin-top: 1.25rem; }
+
+    .reason {
+      font-size: 1.1rem;
+      color: var(--fg);
+      opacity: 0.85;
+      line-height: 1.55;
+    }
+
+    .stats {
+      margin-top: 0.75rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Actions ── */
+    .actions {
+      margin-top: 2rem;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.65rem 1.35rem;
+      min-height: 44px;
+      border: 1.5px solid var(--subtle);
+      border-radius: 8px;
+      background: transparent;
+      font-size: 0.88rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.18s, color 0.18s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:hover  { border-color: var(--muted); color: var(--fg); }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--muted);
+      outline-offset: 3px;
+      border-radius: 8px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 1.25rem;
+      font-size: 0.72rem;
+      color: var(--subtle);
+    }
+
     /* ── Loading ── */
     .loading {
       display: flex;
@@ -81,82 +179,261 @@
     }
 
     .spinner {
-      width: 36px;
-      height: 36px;
-      border: 3px solid #e0e0e0;
-      border-top-color: #999;
+      width: 34px;
+      height: 34px;
+      border: 3px solid var(--subtle);
+      border-top-color: var(--muted);
       border-radius: 50%;
-      animation: spin 0.75s linear infinite;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .spinner { animation: spin 0.75s linear infinite; }
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .loading-text {
-      font-size: 0.95rem;
-      color: #999;
-    }
+    .loading-text { font-size: 0.9rem; color: var(--muted); }
 
     /* ── Error ── */
     .error-title {
-      font-size: 1.4rem;
+      font-size: 1.35rem;
       font-weight: 700;
-      color: #444;
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.55rem;
     }
 
     .error-body {
-      font-size: 0.95rem;
-      color: #777;
-      line-height: 1.5;
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.55;
       margin-bottom: 1.5rem;
     }
-
-    /* ── Footer ── */
-    .footer {
-      margin-top: 2.5rem;
-      font-size: 0.75rem;
-      color: #ccc;
-    }
-
-    .footer a, .footer button {
-      color: #bbb;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font: inherit;
-      text-decoration: underline;
-      text-underline-offset: 3px;
-      padding: 0;
-    }
-
-    .footer a:hover, .footer button:hover { color: #888; }
-
-    /* ── Retry button ── */
-    .btn {
-      display: inline-block;
-      padding: 0.55rem 1.4rem;
-      border: 1.5px solid #ccc;
-      border-radius: 6px;
-      background: transparent;
-      font-size: 0.9rem;
-      color: #666;
-      cursor: pointer;
-      transition: border-color 0.2s, color 0.2s;
-    }
-
-    .btn:hover { border-color: #888; color: #333; }
   </style>
 </head>
 <body>
   <div id="app"></div>
+  <div id="live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
 
   <script>
-    const app = document.getElementById('app');
+    // ── State ──────────────────────────────────────────────────────────────────
+    const CACHE_KEY = 'sigo_v2';
+    const CACHE_TTL = 30 * 60 * 1000; // 30 min
+    let _shareData  = null; // { yes, reason } for doShare()
 
-    // ── Render helpers ────────────────────────────────────────────────────────
+    const app  = document.getElementById('app');
+    const live = document.getElementById('live');
 
+    // ── Cache (localStorage) ───────────────────────────────────────────────────
+    function saveCache(payload) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...payload, at: Date.now() })); } catch {}
+    }
+
+    function loadCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const c = JSON.parse(raw);
+        return (Date.now() - c.at < CACHE_TTL) ? c : null;
+      } catch { return null; }
+    }
+
+    // ── Fetch with exponential-backoff retry ───────────────────────────────────
+    async function fetchRetry(url, retries = 3) {
+      let delay = 1000;
+      for (let i = 0; i <= retries; i++) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return res;
+          if (i === retries) throw new Error(`HTTP ${res.status}`);
+        } catch (err) {
+          if (i === retries) throw err;
+        }
+        await new Promise(r => setTimeout(r, delay));
+        delay *= 2;
+      }
+    }
+
+    // ── Geolocation ────────────────────────────────────────────────────────────
+    function getLocation() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Geolocation isn't supported by your browser."));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          p => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+          e => {
+            if (e.code === 1)
+              reject(new Error("Location access denied. Enable it in your browser settings and try again."));
+            else if (e.code === 3)
+              reject(new Error("Location request timed out. Check your signal and try again."));
+            else
+              reject(new Error("Couldn't get your location. Try again."));
+          },
+          { timeout: 12000, maximumAge: 5 * 60 * 1000 }
+        );
+      });
+    }
+
+    // ── Reverse geocode ────────────────────────────────────────────────────────
+    function extractCity(geo) {
+      if (!geo?.address) return null;
+      const a = geo.address;
+      return a.city || a.town || a.village || a.suburb || a.county || null;
+    }
+
+    // ── Hourly improvement hint ────────────────────────────────────────────────
+    // Returns a label like "3pm" if rain drops below 30% within 8 h, else null.
+    function findImprovement(hourly, currentTime) {
+      if (!hourly?.time?.length || !currentTime) return null;
+      // currentTime from API is already local: "YYYY-MM-DDTHH:00"
+      const key = currentTime.slice(0, 13) + ':00';
+      const idx = hourly.time.indexOf(key);
+      if (idx === -1) return null;
+      const probs = hourly.precipitation_probability;
+      for (let i = idx + 1; i < Math.min(idx + 9, probs.length - 1); i++) {
+        if (probs[i] < 30 && probs[i + 1] < 30) {
+          const h = parseInt(hourly.time[i].slice(11, 13), 10);
+          const label = h === 0 ? 'midnight'
+                      : h === 12 ? '12pm'
+                      : h > 12  ? `${h - 12}pm`
+                      : `${h}am`;
+          return label;
+        }
+      }
+      return null;
+    }
+
+    // ── WMO code helpers ───────────────────────────────────────────────────────
+    const WMO_THUNDER    = [95, 96, 99];
+    const WMO_HEAVY_SNOW = [75, 85, 86];
+    const WMO_FREEZE     = [56, 57, 66, 67];
+    const WMO_FOG        = [45, 48];
+
+    // ── Verdict logic ──────────────────────────────────────────────────────────
+    // Priority: AQI → severe wx code → rain → temp → UV → wind → all clear
+    // Returns [yes: bool, reason: string]
+    function getVerdict(weather, aqi, hourly) {
+      const temp  = weather.temperature_2m         ?? 20;
+      const feels = weather.apparent_temperature   ?? temp;
+      const rain  = weather.precipitation_probability ?? 0;
+      const wind  = weather.wind_speed_10m         ?? 0;    // km/h
+      const uv    = weather.uv_index               ?? null; // null at night
+      const code  = weather.weather_code           ?? 0;
+      const aqVal = aqi?.us_aqi                    ?? null; // null if no coverage
+
+      // 1 · Air quality (US AQI)
+      if (aqVal !== null) {
+        if (aqVal > 200) return [false, "AQI is hazardous right now. Seriously, stay in."];
+        if (aqVal > 150) return [false, "AQI is rough today, stay in."];
+        if (aqVal > 100) return [false, "Air quality's not great — better enjoyed indoors."];
+      }
+
+      // 2 · Severe weather codes
+      if (WMO_THUNDER.includes(code))    return [false, "Thunderstorm out there. Stay in."];
+      if (WMO_HEAVY_SNOW.includes(code)) return [false, "Heavy snow — maybe another day."];
+      if (WMO_FREEZE.includes(code))     return [false, "Freezing rain — genuinely dangerous."];
+      if (WMO_FOG.includes(code))        return [false, "Dense fog today. Visibility's awful."];
+
+      // 3 · Rain probability (5 graduated levels + improvement hint)
+      const clears = findImprovement(hourly, weather.time);
+      if (rain > 85) return [false, "Torrential rain incoming. Hard no."];
+      if (rain > 70) return [false, "Heavy rain expected. Skip it."];
+      if (rain > 55) return [false, clears
+        ? `Probably going to pour — clears up around ${clears}.`
+        : "Probably going to pour. Take an umbrella at minimum."];
+      if (rain > 40) return [false, clears
+        ? `Light rain expected — clears up around ${clears}.`
+        : "Light rain expected this afternoon."];
+
+      // 4 · Temperature (combined heat + UV check)
+      if (temp > 38 && uv !== null && uv > 8)
+        return [false, `${Math.round(temp)}°C with UV ${Math.round(uv)} — a proper double whammy. Stay in.`];
+      if (temp > 42) return [false, `${Math.round(temp)}°C outside. Absolutely not.`];
+      if (temp > 38) return [false, `${Math.round(temp)}°C and sunny — unless you enjoy melting.`];
+      if (feels < -5) return [false, `Feels like ${Math.round(feels)}°C out there. Save yourself.`];
+      if (temp < 0)   return [false, `It's ${Math.round(temp)}°C. Stay warm, stay home.`];
+      if (temp < 5)   return [false, `It's ${Math.round(temp)}°C out. Save yourself.`];
+
+      // 5 · UV index (null at night = skip)
+      if (uv !== null) {
+        if (uv > 10) return [false, "UV is extreme today. Sunscreen won't cut it."];
+        if (uv > 8)  return [false, "UV index is very high — keep it brief if you go out."];
+      }
+
+      // 6 · Wind (km/h)
+      if (wind > 70) return [false, "Gale-force winds. Things are genuinely flying."];
+      if (wind > 50) return [false, "Very gusty today — not a great time."];
+
+      // 7 · All clear
+      if (temp > 28) return [true, "Warm and clear — nice time to get out there."];
+      if (temp > 18) return [true, "Actually a nice day, get out there."];
+      if (temp > 10) return [true, "Decent conditions. Go for it."];
+      return            [true, "A bit cool but perfectly fine to head out."];
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function timeAgo(ts) {
+      const m = Math.floor((Date.now() - ts) / 60000);
+      if (m < 1) return 'just now';
+      return m === 1 ? '1 min ago' : `${m} min ago`;
+    }
+
+    function fmtStats(weather, aqi) {
+      const parts = [];
+      if (weather.temperature_2m != null) {
+        const t = Math.round(weather.temperature_2m);
+        const f = weather.apparent_temperature != null ? Math.round(weather.apparent_temperature) : null;
+        parts.push(f !== null && Math.abs(f - t) >= 2 ? `${t}°C (feels ${f}°C)` : `${t}°C`);
+      }
+      if (aqi?.us_aqi != null)                      parts.push(`AQI ${aqi.us_aqi}`);
+      if (weather.precipitation_probability != null) parts.push(`${weather.precipitation_probability}% rain`);
+      if (weather.wind_speed_10m != null) {
+        const w = Math.round(weather.wind_speed_10m);
+        if (w > 15) parts.push(`${w} km/h wind`);
+      }
+      return parts.join(' · ');
+    }
+
+    function haptic(yes) {
+      try { navigator.vibrate?.(yes ? [40] : [30, 60, 30]); } catch {}
+    }
+
+    function setThemeColor(yes) {
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const map = {
+        true:  dark ? '#0b1e0c' : '#eef6ee',
+        false: dark ? '#1e0c0b' : '#fdecea',
+        null:  dark ? '#121210' : '#f7f7f5',
+      };
+      document.getElementById('tc').setAttribute('content', map[yes]);
+    }
+
+    // ── Share ──────────────────────────────────────────────────────────────────
+    async function share(yes, reason) {
+      const text = `${yes ? 'YES' : 'NO'} — ${reason}`;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: 'Should I Go Outside?', text });
+        } else {
+          await navigator.clipboard.writeText(text);
+          const btn = document.getElementById('share-btn');
+          if (btn) {
+            const orig = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = orig; }, 1800);
+          }
+        }
+      } catch {}
+    }
+
+    function doShare() {
+      if (_shareData) share(_shareData.yes, _shareData.reason);
+    }
+
+    // ── Render ─────────────────────────────────────────────────────────────────
     function renderLoading() {
       document.body.className = '';
+      setThemeColor(null);
       app.innerHTML = `
         <div class="label">Should I Go Outside?</div>
         <div class="loading">
@@ -168,6 +445,7 @@
 
     function renderError(msg) {
       document.body.className = '';
+      setThemeColor(null);
       app.innerHTML = `
         <div class="label">Should I Go Outside?</div>
         <p class="error-title">Couldn't check</p>
@@ -176,112 +454,106 @@
       `;
     }
 
-    function renderResult(yes, reason) {
-      document.body.className = yes ? 'yes' : 'no';
+    function renderResult(yes, reason, weather, aqi, city, at, animate) {
+      const cls   = yes ? 'yes' : 'no';
+      const anim  = animate ? ' animate' : '';
+      const stats = fmtStats(weather, aqi);
+
+      document.body.className = cls;
+      setThemeColor(yes);
+      _shareData = { yes, reason };
+
       app.innerHTML = `
         <div class="label">Should I Go Outside?</div>
-        <div class="verdict ${yes ? 'yes' : 'no'}">${yes ? 'YES' : 'NO'}</div>
-        <p class="reason">${reason}</p>
-        <div class="footer"><button onclick="init()">Refresh</button></div>
+        <div class="verdict ${cls}${anim}">${yes ? 'YES' : 'NO'}</div>
+        <div class="below${anim}">
+          <p class="reason">${reason}</p>
+          ${stats ? `<p class="stats">${stats}</p>` : ''}
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="init()">↻ Refresh</button>
+          <button class="btn" id="share-btn" onclick="doShare()">Share</button>
+        </div>
+        <div class="footer">
+          ${city ? `${city} · ` : ''}Updated ${timeAgo(at)}\
+          ${!animate ? ' <span id="refresh-status"></span>' : ''}
+        </div>
       `;
-    }
 
-    // ── Verdict logic ─────────────────────────────────────────────────────────
-    // Returns [yes: bool, reason: string]
-    // Priority: air quality → rain → temperature → UV → wind → all clear
-
-    function getVerdict(weather, aqi) {
-      const temp  = weather.temperature_2m        ?? 20;
-      const rain  = weather.precipitation_probability ?? 0;
-      const wind  = weather.wind_speed_10m        ?? 0;  // km/h (default unit)
-      const uv    = weather.uv_index              ?? 0;
-      const aq    = aqi?.us_aqi                   ?? 0;
-
-      // 1 · Air quality (US AQI)
-      if (aq > 200) return [false, "AQI is hazardous right now. Seriously, stay in."];
-      if (aq > 150) return [false, "AQI is rough today, stay in."];
-      if (aq > 100) return [false, "Air quality's not great — better enjoyed indoors."];
-
-      // 2 · Precipitation probability (%)
-      if (rain > 80) return [false, "Heavy rain incoming. Hard no."];
-      if (rain > 60) return [false, "It's probably going to pour. Skip it."];
-      if (rain > 40) return [false, "Light rain expected this afternoon."];
-
-      // 3 · Temperature (°C)
-      if (temp > 42) return [false, `${Math.round(temp)}°C outside. Absolutely not.`];
-      if (temp > 38) return [false, `${Math.round(temp)}°C and sunny — unless you enjoy melting.`];
-      if (temp < 0)  return [false, `It's ${Math.round(temp)}°C. Stay warm, stay home.`];
-      if (temp < 5)  return [false, `It's ${Math.round(temp)}°C out. Save yourself.`];
-
-      // 4 · UV index
-      if (uv > 10) return [false, "UV is extreme today. Sunscreen won't cut it."];
-      if (uv > 8)  return [false, "UV index is very high — keep it brief if you go out."];
-
-      // 5 · Wind speed (km/h)
-      if (wind > 70) return [false, "Gale-force winds. Things are genuinely flying."];
-      if (wind > 50) return [false, "Very gusty today — not a great time."];
-
-      // All clear
-      if (temp > 28) return [true, "Warm and clear — nice time to get out there."];
-      if (temp > 18) return [true, "Actually a nice day, get out there."];
-      if (temp > 10) return [true, "Decent conditions. Go for it."];
-      return            [true, "A bit cool but perfectly fine to head out."];
-    }
-
-    // ── Data fetching ─────────────────────────────────────────────────────────
-
-    async function fetchData(lat, lon) {
-      const weatherUrl = new URL("https://api.open-meteo.com/v1/forecast");
-      weatherUrl.searchParams.set("latitude", lat);
-      weatherUrl.searchParams.set("longitude", lon);
-      weatherUrl.searchParams.set("current",
-        "temperature_2m,precipitation_probability,wind_speed_10m,uv_index,weather_code");
-
-      const aqUrl = new URL("https://air-quality-api.open-meteo.com/v1/air-quality");
-      aqUrl.searchParams.set("latitude", lat);
-      aqUrl.searchParams.set("longitude", lon);
-      aqUrl.searchParams.set("current", "us_aqi,pm2_5");
-
-      const [wRes, aRes] = await Promise.all([fetch(weatherUrl), fetch(aqUrl)]);
-
-      if (!wRes.ok) throw new Error("Weather data unavailable. Try again shortly.");
-      if (!aRes.ok) throw new Error("Air quality data unavailable. Try again shortly.");
-
-      const [wData, aData] = await Promise.all([wRes.json(), aRes.json()]);
-      return { weather: wData.current, aqi: aData.current };
-    }
-
-    function getLocation() {
-      return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error("Your browser doesn't support geolocation."));
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(
-          pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-          err => {
-            if (err.code === 1)
-              reject(new Error("Location access denied. Enable it in your browser and try again."));
-            else
-              reject(new Error("Couldn't get your location. Try again."));
-          },
-          { timeout: 10000 }
-        );
-      });
-    }
-
-    // ── Entry point ───────────────────────────────────────────────────────────
-
-    async function init() {
-      renderLoading();
-      try {
-        const { lat, lon }      = await getLocation();
-        const { weather, aqi }  = await fetchData(lat, lon);
-        const [yes, reason]     = getVerdict(weather, aqi);
-        renderResult(yes, reason);
-      } catch (err) {
-        renderError(err.message);
+      if (animate) {
+        live.textContent = `${yes ? 'Yes' : 'No'}. ${reason}`;
+        haptic(yes);
       }
+    }
+
+    // ── Data fetching ──────────────────────────────────────────────────────────
+    async function fetchData(lat, lon) {
+      const wUrl = new URL('https://api.open-meteo.com/v1/forecast');
+      wUrl.searchParams.set('latitude', lat);
+      wUrl.searchParams.set('longitude', lon);
+      wUrl.searchParams.set('current',
+        'temperature_2m,apparent_temperature,precipitation_probability,wind_speed_10m,uv_index,weather_code');
+      wUrl.searchParams.set('hourly', 'precipitation_probability');
+      wUrl.searchParams.set('forecast_days', '1');
+      wUrl.searchParams.set('timezone', 'auto');
+
+      const aqUrl = new URL('https://air-quality-api.open-meteo.com/v1/air-quality');
+      aqUrl.searchParams.set('latitude', lat);
+      aqUrl.searchParams.set('longitude', lon);
+      aqUrl.searchParams.set('current', 'us_aqi,pm2_5');
+
+      const geoUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
+
+      const [wResult, aqResult, geoResult] = await Promise.allSettled([
+        fetchRetry(wUrl.toString()).then(r => r.json()),
+        fetchRetry(aqUrl.toString()).then(r => r.json()),
+        fetch(geoUrl).then(r => r.json()),
+      ]);
+
+      if (wResult.status === 'rejected')
+        throw new Error('Weather data unavailable. Try again shortly.');
+
+      return {
+        weather: wResult.value.current,
+        hourly:  wResult.value.hourly,
+        aqi:     aqResult.status === 'fulfilled' ? aqResult.value.current : null,
+        city:    geoResult.status === 'fulfilled' ? extractCity(geoResult.value) : null,
+      };
+    }
+
+    // ── Init ───────────────────────────────────────────────────────────────────
+    async function init() {
+      const cached = loadCache();
+
+      if (cached) {
+        // Show stale result immediately, refresh silently
+        renderResult(cached.yes, cached.reason, cached.weather, cached.aqi, cached.city, cached.at, false);
+        const status = document.getElementById('refresh-status');
+        if (status) status.textContent = '· Refreshing…';
+      } else {
+        renderLoading();
+      }
+
+      try {
+        const { lat, lon }             = await getLocation();
+        const { weather, hourly, aqi, city } = await fetchData(lat, lon);
+        const [yes, reason]            = getVerdict(weather, aqi, hourly);
+        const at                       = Date.now();
+        saveCache({ yes, reason, weather, aqi, city, at });
+        renderResult(yes, reason, weather, aqi, city, at, true);
+      } catch (err) {
+        if (cached) {
+          const status = document.getElementById('refresh-status');
+          if (status) status.textContent = '· Refresh failed';
+        } else {
+          renderError(err.message);
+        }
+      }
+    }
+
+    // ── Service worker registration ────────────────────────────────────────────
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     }
 
     init();
