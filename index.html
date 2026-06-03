@@ -326,6 +326,7 @@
         if (aqVal > 200) return [false, "AQI is hazardous right now. Seriously, stay in."];
         if (aqVal > 150) return [false, "AQI is rough today, stay in."];
         if (aqVal > 100) return [false, "Air quality's not great — better enjoyed indoors."];
+        if (aqVal > 50)  return [true,  "Air quality's moderate today — fine for most, take it easy if you're sensitive."];
       }
 
       // 2 · Severe weather codes
