@@ -1,9 +1,10 @@
 {
-  "id": "/",
+  "id": "/should-i-go-outside/",
   "name": "Should I Go Outside?",
   "short_name": "Outside?",
   "description": "One verdict. No dashboard. Just yes or no.",
-  "start_url": "/",
+  "start_url": "/should-i-go-outside/",
+  "scope": "/should-i-go-outside/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f7f7f5",
