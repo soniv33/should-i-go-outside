@@ -172,12 +172,10 @@
 
     /* ── Sources ── */
     .sources {
-      margin-top: 2.5rem;
-      padding-bottom: 1.5rem;
-      font-size: 0.68rem;
+      margin-top: 0.45rem;
+      font-size: 0.62rem;
       color: var(--subtle);
       text-align: center;
-      letter-spacing: 0.02em;
     }
 
     .sources a {
@@ -229,11 +227,6 @@
 <body>
   <div id="app"></div>
   <div id="live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
-  <footer class="sources">
-    Weather: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>
-    &middot; Air quality: <a href="https://waqi.info" target="_blank" rel="noopener">WAQI</a>
-    &middot; Location: <a href="https://nominatim.openstreetmap.org" target="_blank" rel="noopener">Nominatim</a>
-  </footer>
 
   <script>
     // ── State ──────────────────────────────────────────────────────────────────
@@ -501,6 +494,7 @@
         <div class="footer">
           ${city ? `${city} · ` : ''}Updated ${timeAgo(at)}\
           ${!animate ? ' <span id="refresh-status"></span>' : ''}
+          <div class="sources">Weather: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> &middot; Air quality: <a href="https://waqi.info" target="_blank" rel="noopener">WAQI</a> &middot; Location: <a href="https://nominatim.openstreetmap.org" target="_blank" rel="noopener">Nominatim</a></div>
         </div>
       `;
 
