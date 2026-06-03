@@ -8,7 +8,11 @@
   <!-- PWA -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#f7f7f5" id="tc" />
-  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Outside?" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
 
   <!-- Social / OG -->
   <meta property="og:title" content="Should I Go Outside?" />
@@ -222,11 +226,53 @@
       line-height: 1.55;
       margin-bottom: 1.5rem;
     }
+
+    /* ── PWA banners ── */
+    .pwa-banner {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem 0.9rem 0.6rem 1rem;
+      background: var(--fg);
+      color: var(--bg);
+      border-radius: 10px;
+      font-size: 0.82rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      white-space: nowrap;
+      z-index: 100;
+      animation: fade-up 0.3s ease both;
+    }
+
+    .pwa-banner button {
+      background: transparent;
+      border: 1.5px solid currentColor;
+      border-radius: 6px;
+      color: inherit;
+      font-size: 0.78rem;
+      padding: 0.25rem 0.6rem;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+
+    .pwa-banner button:hover { opacity: 1; }
+
+    .pwa-install-btn {
+      background: var(--bg) !important;
+      color: var(--fg) !important;
+      border: none !important;
+      font-weight: 600;
+      opacity: 1 !important;
+    }
   </style>
 </head>
 <body>
   <div id="app"></div>
   <div id="live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+  <div id="pwa-banner" style="display:none" role="status"></div>
 
   <script>
     // ── State ──────────────────────────────────────────────────────────────────
@@ -568,9 +614,72 @@
       }
     }
 
-    // ── Service worker registration ────────────────────────────────────────────
+    // ── PWA banners ────────────────────────────────────────────────────────────
+    const banner = document.getElementById('pwa-banner');
+
+    function showBanner(html) {
+      banner.innerHTML = html;
+      banner.style.display = 'flex';
+    }
+
+    function hideBanner() {
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+    }
+
+    // Install prompt
+    let _installPrompt = null;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      _installPrompt = e;
+      showBanner(`
+        <span>Add to home screen</span>
+        <button onclick="hideBanner()" aria-label="Dismiss">✕</button>
+        <button class="pwa-install-btn" onclick="triggerInstall()">Install</button>
+      `);
+    });
+
+    async function triggerInstall() {
+      if (!_installPrompt) return;
+      hideBanner();
+      _installPrompt.prompt();
+      await _installPrompt.userChoice;
+      _installPrompt = null;
+    }
+
+    window.addEventListener('appinstalled', () => {
+      hideBanner();
+      _installPrompt = null;
+    });
+
+    // Service worker registration + update detection
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const next = reg.installing;
+          next.addEventListener('statechange', () => {
+            if (next.state === 'installed' && navigator.serviceWorker.controller) {
+              showBanner(`
+                <span>Update available</span>
+                <button onclick="hideBanner()" aria-label="Dismiss">✕</button>
+                <button class="pwa-install-btn" onclick="applyUpdate()">Reload</button>
+              `);
+            }
+          });
+        });
+      }).catch(() => {});
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) { refreshing = true; location.reload(); }
+      });
+    }
+
+    function applyUpdate() {
+      hideBanner();
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg?.waiting) reg.waiting.postMessage('skipWaiting');
+      });
     }
 
     init();

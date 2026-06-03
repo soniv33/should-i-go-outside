@@ -1,9 +1,8 @@
-const CACHE = 'sigo-v2';
-const SHELL = ['/index.html', '/manifest.json', '/icon.svg'];
+const CACHE = 'sigo-v3';
+const SHELL = ['/index.html', '/manifest.json', '/icon.svg', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
@@ -15,11 +14,19 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+self.addEventListener('message', e => {
+  if (e.data === 'skipWaiting') self.skipWaiting();
+});
+
 self.addEventListener('fetch', e => {
   const { hostname } = new URL(e.request.url);
 
   // Let API calls pass through — localStorage handles offline data display
-  if (hostname.includes('open-meteo.com') || hostname.includes('nominatim.openstreetmap.org')) {
+  if (
+    hostname.includes('open-meteo.com') ||
+    hostname.includes('nominatim.openstreetmap.org') ||
+    hostname.includes('waqi.info')
+  ) {
     return;
   }
 
