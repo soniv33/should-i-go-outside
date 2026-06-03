@@ -215,7 +215,7 @@
 
   <script>
     // ── State ──────────────────────────────────────────────────────────────────
-    const CACHE_KEY = 'sigo_v2';
+    const CACHE_KEY = 'sigo_v3';
     const CACHE_TTL = 30 * 60 * 1000; // 30 min
     let _shareData  = null; // { yes, reason } for doShare()
 
@@ -498,16 +498,13 @@
       wUrl.searchParams.set('forecast_days', '1');
       wUrl.searchParams.set('timezone', 'auto');
 
-      const aqUrl = new URL('https://air-quality-api.open-meteo.com/v1/air-quality');
-      aqUrl.searchParams.set('latitude', lat);
-      aqUrl.searchParams.set('longitude', lon);
-      aqUrl.searchParams.set('current', 'us_aqi,pm2_5');
+      const aqUrl = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=demo`;
 
       const geoUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
 
       const [wResult, aqResult, geoResult] = await Promise.allSettled([
         fetchRetry(wUrl.toString()).then(r => r.json()),
-        fetchRetry(aqUrl.toString()).then(r => r.json()),
+        fetchRetry(aqUrl).then(r => r.json()),
         fetch(geoUrl).then(r => r.json()),
       ]);
 
@@ -517,7 +514,9 @@
       return {
         weather: wResult.value.current,
         hourly:  wResult.value.hourly,
-        aqi:     aqResult.status === 'fulfilled' ? aqResult.value.current : null,
+        aqi:     aqResult.status === 'fulfilled' && aqResult.value.status === 'ok' && typeof aqResult.value.data?.aqi === 'number'
+                   ? { us_aqi: aqResult.value.data.aqi }
+                   : null,
         city:    geoResult.status === 'fulfilled' ? extractCity(geoResult.value) : null,
       };
     }
