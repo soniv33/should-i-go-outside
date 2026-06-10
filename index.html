@@ -276,7 +276,7 @@
 
   <script>
     // ── State ──────────────────────────────────────────────────────────────────
-    const CACHE_KEY = 'sigo_v3';
+    const CACHE_KEY = 'sigo_v4';
     const CACHE_TTL = 30 * 60 * 1000; // 30 min
     let _shareData  = null; // { yes, reason } for doShare()
 
@@ -540,7 +540,7 @@
         <div class="footer">
           ${city ? `${city} · ` : ''}Updated ${timeAgo(at)}\
           ${!animate ? ' <span id="refresh-status"></span>' : ''}
-          <div class="sources">Weather: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> &middot; Air quality: <a href="https://waqi.info" target="_blank" rel="noopener">WAQI</a> &middot; Location: <a href="https://nominatim.openstreetmap.org" target="_blank" rel="noopener">Nominatim</a></div>
+          <div class="sources">Weather: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> &middot; Air quality: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> &amp; <a href="https://waqi.info" target="_blank" rel="noopener">WAQI</a> &middot; Location: <a href="https://nominatim.openstreetmap.org" target="_blank" rel="noopener">Nominatim</a></div>
         </div>
       `;
 
@@ -561,25 +561,43 @@
       wUrl.searchParams.set('forecast_days', '1');
       wUrl.searchParams.set('timezone', 'auto');
 
-      const aqUrl = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=demo`;
+      const omAqUrl = new URL('https://air-quality-api.open-meteo.com/v1/air-quality');
+      omAqUrl.searchParams.set('latitude', lat);
+      omAqUrl.searchParams.set('longitude', lon);
+      omAqUrl.searchParams.set('current', 'us_aqi');
+
+      const waqiUrl = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=demo`;
 
       const geoUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
 
-      const [wResult, aqResult, geoResult] = await Promise.allSettled([
+      const [wResult, omAqResult, waqiResult, geoResult] = await Promise.allSettled([
         fetchRetry(wUrl.toString()).then(r => r.json()),
-        fetchRetry(aqUrl).then(r => r.json()),
+        fetchRetry(omAqUrl.toString(), 1).then(r => r.json()),
+        fetchRetry(waqiUrl, 1).then(r => r.json()),
         fetch(geoUrl).then(r => r.json()),
       ]);
 
       if (wResult.status === 'rejected')
         throw new Error('Weather data unavailable. Try again shortly.');
 
+      // Air quality: take the worse (higher) of the two sources, when available.
+      // Open-Meteo's CAMS model gives continuous global coverage but can miss local
+      // pollution hotspots; WAQI reports the nearest ground station, which can be
+      // sited away from the worst air. Erring toward the higher reading is safer
+      // for a "should I go outside" call.
+      const omAqi = omAqResult.status === 'fulfilled' && typeof omAqResult.value.current?.us_aqi === 'number'
+                       ? omAqResult.value.current.us_aqi
+                       : null;
+      const waqiAqi = waqiResult.status === 'fulfilled' && waqiResult.value.status === 'ok' && typeof waqiResult.value.data?.aqi === 'number'
+                       ? waqiResult.value.data.aqi
+                       : null;
+      const aqi = (omAqi == null && waqiAqi == null) ? null
+                : { us_aqi: Math.max(omAqi ?? -Infinity, waqiAqi ?? -Infinity) };
+
       return {
         weather: wResult.value.current,
         hourly:  wResult.value.hourly,
-        aqi:     aqResult.status === 'fulfilled' && aqResult.value.status === 'ok' && typeof aqResult.value.data?.aqi === 'number'
-                   ? { us_aqi: aqResult.value.data.aqi }
-                   : null,
+        aqi,
         city:    geoResult.status === 'fulfilled' ? extractCity(geoResult.value) : null,
       };
     }
