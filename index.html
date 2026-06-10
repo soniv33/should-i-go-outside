@@ -276,7 +276,7 @@
 
   <script>
     // ── State ──────────────────────────────────────────────────────────────────
-    const CACHE_KEY = 'sigo_v4';
+    const CACHE_KEY = 'sigo_v5';
     const CACHE_TTL = 30 * 60 * 1000; // 30 min
     let _shareData  = null; // { yes, reason } for doShare()
 
@@ -447,7 +447,12 @@
         const f = weather.apparent_temperature != null ? Math.round(weather.apparent_temperature) : null;
         parts.push(f !== null && Math.abs(f - t) >= 2 ? `${t}°C (feels ${f}°C)` : `${t}°C`);
       }
-      if (aqi?.us_aqi != null)                      parts.push(`AQI ${aqi.us_aqi}`);
+      if (aqi?.us_aqi != null) {
+        parts.push(`AQI ${aqi.us_aqi}`);
+        if (new URLSearchParams(location.search).has('debug')) {
+          parts.push(`OM ${aqi.om ?? '–'} / WAQI ${aqi.waqi ?? '–'}`);
+        }
+      }
       if (weather.precipitation_probability != null) parts.push(`${weather.precipitation_probability}% rain`);
       if (weather.wind_speed_10m != null) {
         const w = Math.round(weather.wind_speed_10m);
@@ -592,7 +597,7 @@
                        ? waqiResult.value.data.aqi
                        : null;
       const aqi = (omAqi == null && waqiAqi == null) ? null
-                : { us_aqi: Math.max(omAqi ?? -Infinity, waqiAqi ?? -Infinity) };
+                : { us_aqi: Math.max(omAqi ?? -Infinity, waqiAqi ?? -Infinity), om: omAqi, waqi: waqiAqi };
 
       return {
         weather: wResult.value.current,
