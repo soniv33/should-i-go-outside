@@ -276,7 +276,7 @@
 
   <script>
     // ── State ──────────────────────────────────────────────────────────────────
-    const CACHE_KEY = 'sigo_v5';
+    const CACHE_KEY = 'sigo_v6';
     const CACHE_TTL = 30 * 60 * 1000; // 30 min
     let _shareData  = null; // { yes, reason } for doShare()
 
@@ -447,12 +447,7 @@
         const f = weather.apparent_temperature != null ? Math.round(weather.apparent_temperature) : null;
         parts.push(f !== null && Math.abs(f - t) >= 2 ? `${t}°C (feels ${f}°C)` : `${t}°C`);
       }
-      if (aqi?.us_aqi != null) {
-        parts.push(`AQI ${aqi.us_aqi}`);
-        if (new URLSearchParams(location.search).has('debug')) {
-          parts.push(`OM ${aqi.om ?? '–'} / WAQI ${aqi.waqi ?? '–'}`);
-        }
-      }
+      if (aqi?.us_aqi != null) parts.push(`AQI ${aqi.us_aqi}`);
       if (weather.precipitation_probability != null) parts.push(`${weather.precipitation_probability}% rain`);
       if (weather.wind_speed_10m != null) {
         const w = Math.round(weather.wind_speed_10m);
@@ -585,19 +580,18 @@
       if (wResult.status === 'rejected')
         throw new Error('Weather data unavailable. Try again shortly.');
 
-      // Air quality: take the worse (higher) of the two sources, when available.
-      // Open-Meteo's CAMS model gives continuous global coverage but can miss local
-      // pollution hotspots; WAQI reports the nearest ground station, which can be
-      // sited away from the worst air. Erring toward the higher reading is safer
-      // for a "should I go outside" call.
+      // Air quality: prefer the WAQI ground station (closely matches IQAir/Google
+      // in practice). Open-Meteo's CAMS model is global-coverage but can run far
+      // higher than ground truth, so it's only a fallback when WAQI has no station
+      // nearby.
       const omAqi = omAqResult.status === 'fulfilled' && typeof omAqResult.value.current?.us_aqi === 'number'
                        ? omAqResult.value.current.us_aqi
                        : null;
       const waqiAqi = waqiResult.status === 'fulfilled' && waqiResult.value.status === 'ok' && typeof waqiResult.value.data?.aqi === 'number'
                        ? waqiResult.value.data.aqi
                        : null;
-      const aqi = (omAqi == null && waqiAqi == null) ? null
-                : { us_aqi: Math.max(omAqi ?? -Infinity, waqiAqi ?? -Infinity), om: omAqi, waqi: waqiAqi };
+      const aqVal = waqiAqi ?? omAqi;
+      const aqi = aqVal == null ? null : { us_aqi: aqVal };
 
       return {
         weather: wResult.value.current,
