@@ -457,7 +457,17 @@
         const f = weather.apparent_temperature != null ? Math.round(weather.apparent_temperature) : null;
         parts.push(f !== null && Math.abs(f - t) >= 2 ? `${t}°C (feels ${f}°C)` : `${t}°C`);
       }
-      if (aqi?.us_aqi != null) parts.push(`AQI ${aqi.us_aqi}`);
+      if (aqi?.us_aqi != null) {
+        parts.push(`AQI ${aqi.us_aqi}`);
+        if (new URLSearchParams(location.search).has('debug')) {
+          const om = aqi.debug?.om ?? '–';
+          const waqi = aqi.debug?.waqi ?? '–';
+          const dist = aqi.debug?.waqiDistanceKm != null ? `${aqi.debug.waqiDistanceKm.toFixed(0)}km` : '–';
+          const age = aqi.debug?.waqiAgeHours != null ? `${aqi.debug.waqiAgeHours.toFixed(1)}h` : '–';
+          const used = aqi.debug?.source ?? '–';
+          parts.push(`[${used}] OM ${om} / WAQI ${waqi} (${dist}, ${age})`);
+        }
+      }
       if (weather.precipitation_probability != null) parts.push(`${weather.precipitation_probability}% rain`);
       if (weather.wind_speed_10m != null) {
         const w = Math.round(weather.wind_speed_10m);
@@ -600,19 +610,22 @@
                        ? omAqResult.value.current.us_aqi
                        : null;
       let waqiAqi = null;
+      let waqiDistanceKm = null;
+      let waqiAgeHours = null;
       if (waqiResult.status === 'fulfilled' && waqiResult.value.status === 'ok' && typeof waqiResult.value.data?.aqi === 'number') {
         const station = waqiResult.value.data;
         const [sLat, sLon] = Array.isArray(station.city?.geo) ? station.city.geo : [];
-        const nearby = typeof sLat === 'number' && typeof sLon === 'number'
-                          ? distanceKm(lat, lon, sLat, sLon) <= 50
-                          : true; // no coords reported, can't check — trust it
-        const ageHours = typeof station.time?.v === 'number'
-                            ? (Date.now() / 1000 - station.time.v) / 3600
-                            : 0; // no timestamp reported, can't check — trust it
-        if (nearby && ageHours <= 6) waqiAqi = station.aqi;
+        if (typeof sLat === 'number' && typeof sLon === 'number') waqiDistanceKm = distanceKm(lat, lon, sLat, sLon);
+        if (typeof station.time?.v === 'number') waqiAgeHours = (Date.now() / 1000 - station.time.v) / 3600;
+        const nearby = waqiDistanceKm == null || waqiDistanceKm <= 50; // no coords reported, can't check — trust it
+        const fresh  = waqiAgeHours == null || waqiAgeHours <= 6;      // no timestamp reported, can't check — trust it
+        if (nearby && fresh) waqiAqi = station.aqi;
       }
       const aqVal = waqiAqi ?? omAqi;
-      const aqi = aqVal == null ? null : { us_aqi: aqVal };
+      const aqi = aqVal == null ? null : {
+        us_aqi: aqVal,
+        debug: { om: omAqi, waqi: waqiAqi, waqiDistanceKm, waqiAgeHours, source: waqiAqi != null ? 'WAQI' : (omAqi != null ? 'OM-fallback' : 'none') },
+      };
 
       return {
         weather: wResult.value.current,
