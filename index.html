@@ -335,6 +335,16 @@
       });
     }
 
+    // ── Distance helper ────────────────────────────────────────────────────────
+    function distanceKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
     // ── Reverse geocode ────────────────────────────────────────────────────────
     function extractCity(geo) {
       if (!geo?.address) return null;
@@ -583,13 +593,24 @@
       // Air quality: prefer the WAQI ground station (closely matches IQAir/Google
       // in practice). Open-Meteo's CAMS model is global-coverage but can run far
       // higher than ground truth, so it's only a fallback when WAQI has no station
-      // nearby.
+      // nearby. The demo token's geo lookup can return a station far from the
+      // requested point (or a stale reading) with no warning, so both are
+      // validated before being trusted.
       const omAqi = omAqResult.status === 'fulfilled' && typeof omAqResult.value.current?.us_aqi === 'number'
                        ? omAqResult.value.current.us_aqi
                        : null;
-      const waqiAqi = waqiResult.status === 'fulfilled' && waqiResult.value.status === 'ok' && typeof waqiResult.value.data?.aqi === 'number'
-                       ? waqiResult.value.data.aqi
-                       : null;
+      let waqiAqi = null;
+      if (waqiResult.status === 'fulfilled' && waqiResult.value.status === 'ok' && typeof waqiResult.value.data?.aqi === 'number') {
+        const station = waqiResult.value.data;
+        const [sLat, sLon] = Array.isArray(station.city?.geo) ? station.city.geo : [];
+        const nearby = typeof sLat === 'number' && typeof sLon === 'number'
+                          ? distanceKm(lat, lon, sLat, sLon) <= 50
+                          : true; // no coords reported, can't check — trust it
+        const ageHours = typeof station.time?.v === 'number'
+                            ? (Date.now() / 1000 - station.time.v) / 3600
+                            : 0; // no timestamp reported, can't check — trust it
+        if (nearby && ageHours <= 6) waqiAqi = station.aqi;
+      }
       const aqVal = waqiAqi ?? omAqi;
       const aqi = aqVal == null ? null : { us_aqi: aqVal };
 
